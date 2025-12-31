@@ -1,7 +1,8 @@
 package com.devroller.global.security.jwt;
 
+import com.devroller.domain.user.entity.User;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jwt.JwtClaimsSet;
 import org.springframework.security.oauth2.jwt.JwtEncoder;
 import org.springframework.security.oauth2.jwt.JwtEncoderParameters;
@@ -9,84 +10,52 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
-import java.util.List;
 
-/**
- * JWT 토큰 생성 Provider
- * - Access Token 생성
- * - Refresh Token 생성
- */
-@Slf4j
 @Component
 @RequiredArgsConstructor
 public class JwtTokenProvider {
 
     private final JwtEncoder jwtEncoder;
-    private final JwtProperties jwtProperties;
 
-    /**
-     * Access Token 생성
-     * 
-     * @param userId 사용자 ID
-     * @param email 사용자 이메일
-     * @param roles 사용자 권한 목록
-     * @return JWT Access Token
-     */
-    public String generateAccessToken(Long userId, String email, List<String> roles) {
+    @Value("${jwt.access-token-expiration:3600000}")
+    private long accessTokenExpiration;
+
+    @Value("${jwt.refresh-token-expiration:604800000}")
+    private long refreshTokenExpiration;
+
+    public String generateAccessToken(User user) {
         Instant now = Instant.now();
-        Instant expiry = now.plus(jwtProperties.getExpiration(), ChronoUnit.MILLIS);
+        Instant expiry = now.plus(accessTokenExpiration, ChronoUnit.MILLIS);
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer(jwtProperties.getIssuer())
+                .issuer("devroller")
                 .issuedAt(now)
                 .expiresAt(expiry)
-                .subject(String.valueOf(userId))
-                .claim("email", email)
-                .claim("roles", roles)
-                .claim("type", "access")
+                .subject(String.valueOf(user.getId()))
+                .claim("email", user.getEmail())
+                .claim("nickname", user.getNickname())
+                .claim("role", user.getRole().name())
                 .build();
 
-        String token = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
-        
-        log.debug("Access token generated for user: {}", userId);
-        return token;
+        return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 
-    /**
-     * Refresh Token 생성
-     * 
-     * @param userId 사용자 ID
-     * @return JWT Refresh Token
-     */
-    public String generateRefreshToken(Long userId) {
+    public String generateRefreshToken(User user) {
         Instant now = Instant.now();
-        Instant expiry = now.plus(jwtProperties.getRefreshExpiration(), ChronoUnit.MILLIS);
+        Instant expiry = now.plus(refreshTokenExpiration, ChronoUnit.MILLIS);
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer(jwtProperties.getIssuer())
+                .issuer("devroller")
                 .issuedAt(now)
                 .expiresAt(expiry)
-                .subject(String.valueOf(userId))
+                .subject(String.valueOf(user.getId()))
                 .claim("type", "refresh")
                 .build();
 
-        String token = jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
-        
-        log.debug("Refresh token generated for user: {}", userId);
-        return token;
+        return jwtEncoder.encode(JwtEncoderParameters.from(claims)).getTokenValue();
     }
 
-    /**
-     * Access Token 만료 시간 (초 단위)
-     */
-    public long getAccessTokenExpirationSeconds() {
-        return jwtProperties.getExpiration() / 1000;
-    }
-
-    /**
-     * Refresh Token 만료 시간 (초 단위)
-     */
-    public long getRefreshTokenExpirationSeconds() {
-        return jwtProperties.getRefreshExpiration() / 1000;
+    public long getAccessTokenExpiration() {
+        return accessTokenExpiration;
     }
 }

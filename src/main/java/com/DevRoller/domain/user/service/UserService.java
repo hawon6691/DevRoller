@@ -1,67 +1,63 @@
 package com.devroller.domain.user.service;
 
-import com.devroller.domain.user.dto.UserProfileResponse;
+import com.devroller.domain.gamification.title.entity.Title;
+import com.devroller.domain.gamification.title.repository.TitleRepository;
+import com.devroller.domain.user.dto.UserResponse;
 import com.devroller.domain.user.dto.UserUpdateRequest;
 import com.devroller.domain.user.entity.User;
 import com.devroller.domain.user.repository.UserRepository;
 import com.devroller.global.exception.BusinessException;
 import com.devroller.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
-import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-/**
- * 사용자 서비스
- */
-@Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class UserService {
 
     private final UserRepository userRepository;
+    private final TitleRepository titleRepository;
     private final PasswordEncoder passwordEncoder;
 
     /**
-     * 사용자 조회 (ID)
+     * ID로 사용자 조회
      */
-    public User findById(Long userId) {
-        return userRepository.findById(userId)
-                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+    public UserResponse getUserById(Long userId) {
+        User user = findUserById(userId);
+        String titleName = getTitleName(user.getEquippedTitleId());
+        return UserResponse.withTitle(user, titleName);
     }
 
     /**
-     * 사용자 프로필 조회
+     * 내 정보 조회
      */
-    public UserProfileResponse getProfile(Long userId) {
-        User user = findById(userId);
-        return UserProfileResponse.from(user);
+    public UserResponse getMyInfo(Long userId) {
+        return getUserById(userId);
     }
 
     /**
      * 프로필 수정
      */
     @Transactional
-    public UserProfileResponse updateProfile(Long userId, UserUpdateRequest request) {
-        User user = findById(userId);
+    public UserResponse updateProfile(Long userId, UserUpdateRequest request) {
+        User user = findUserById(userId);
 
-        // 닉네임 변경 시 중복 체크
-        if (request.getNickname() != null && !request.getNickname().equals(user.getNickname())) {
-            if (userRepository.existsByNickname(request.getNickname())) {
-                throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
-            }
+        // 닉네임 중복 체크
+        if (request.getNickname() != null && 
+            !request.getNickname().equals(user.getNickname()) &&
+            userRepository.existsByNickname(request.getNickname())) {
+            throw new BusinessException(ErrorCode.DUPLICATE_NICKNAME);
         }
 
         user.updateProfile(request.getNickname(), request.getProfileImage());
-        log.info("User profile updated: {}", userId);
-
-        return UserProfileResponse.from(user);
+        
+        String titleName = getTitleName(user.getEquippedTitleId());
+        return UserResponse.withTitle(user, titleName);
     }
 
     /**
@@ -69,107 +65,74 @@ public class UserService {
      */
     @Transactional
     public void changePassword(Long userId, String currentPassword, String newPassword) {
-        User user = findById(userId);
+        User user = findUserById(userId);
 
-        // 현재 비밀번호 확인
         if (!passwordEncoder.matches(currentPassword, user.getPassword())) {
             throw new BusinessException(ErrorCode.INVALID_PASSWORD);
         }
 
-        // 새 비밀번호 암호화 및 저장
-        String encodedPassword = passwordEncoder.encode(newPassword);
-        user.changePassword(encodedPassword);
-
-        log.info("User password changed: {}", userId);
-    }
-
-    /**
-     * 회원 탈퇴
-     */
-    @Transactional
-    public void deactivate(Long userId, String password) {
-        User user = findById(userId);
-
-        // 비밀번호 확인
-        if (!passwordEncoder.matches(password, user.getPassword())) {
-            throw new BusinessException(ErrorCode.INVALID_PASSWORD);
-        }
-
-        user.deactivate();
-        log.info("User deactivated: {}", userId);
-    }
-
-    /**
-     * 레벨 랭킹 조회
-     */
-    public List<UserProfileResponse> getLevelRanking(int limit) {
-        return userRepository.findTopByLevelRanking(PageRequest.of(0, limit))
-                .stream()
-                .map(UserProfileResponse::from)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 완료 프로젝트 랭킹 조회
-     */
-    public List<UserProfileResponse> getCompletedRanking(int limit) {
-        return userRepository.findTopByCompletedRanking(PageRequest.of(0, limit))
-                .stream()
-                .map(UserProfileResponse::from)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 스트릭 랭킹 조회
-     */
-    public List<UserProfileResponse> getStreakRanking(int limit) {
-        return userRepository.findTopByStreakRanking(PageRequest.of(0, limit))
-                .stream()
-                .map(UserProfileResponse::from)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 경험치 추가
-     */
-    @Transactional
-    public void addExperience(Long userId, int exp) {
-        User user = findById(userId);
-        int beforeLevel = user.getLevel();
-        user.addExperience(exp);
-        
-        if (user.getLevel() > beforeLevel) {
-            log.info("User leveled up: {} (Lv.{} -> Lv.{})", userId, beforeLevel, user.getLevel());
-        }
-    }
-
-    /**
-     * 프로젝트 완료 처리
-     */
-    @Transactional
-    public void completeProject(Long userId) {
-        User user = findById(userId);
-        user.completeProject();
-        log.info("User completed project: {} (total: {})", userId, user.getTotalCompleted());
-    }
-
-    /**
-     * 스트릭 초기화
-     */
-    @Transactional
-    public void resetStreak(Long userId) {
-        User user = findById(userId);
-        user.resetStreak();
-        log.info("User streak reset: {}", userId);
+        user.changePassword(passwordEncoder.encode(newPassword));
     }
 
     /**
      * 칭호 장착
      */
     @Transactional
-    public void equipTitle(Long userId, Long titleId) {
-        User user = findById(userId);
+    public UserResponse equipTitle(Long userId, Long titleId) {
+        User user = findUserById(userId);
+        
+        // 칭호 존재 확인
+        Title title = titleRepository.findById(titleId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.TITLE_NOT_FOUND));
+
         user.equipTitle(titleId);
-        log.info("User equipped title: {} -> titleId: {}", userId, titleId);
+        return UserResponse.withTitle(user, title.getName());
+    }
+
+    /**
+     * 레벨 랭킹 조회
+     */
+    public Page<UserResponse> getLevelRanking(Pageable pageable) {
+        return userRepository.findByStatusOrderByLevelDescExperienceDesc(User.UserStatus.ACTIVE, pageable)
+                .map(UserResponse::from);
+    }
+
+    /**
+     * 완료 프로젝트 랭킹 조회
+     */
+    public Page<UserResponse> getCompletedRanking(Pageable pageable) {
+        return userRepository.findByStatusOrderByTotalCompletedDesc(User.UserStatus.ACTIVE, pageable)
+                .map(UserResponse::from);
+    }
+
+    /**
+     * 스트릭 랭킹 조회
+     */
+    public Page<UserResponse> getStreakRanking(Pageable pageable) {
+        return userRepository.findByStatusOrderByCurrentStreakDesc(User.UserStatus.ACTIVE, pageable)
+                .map(UserResponse::from);
+    }
+
+    /**
+     * 회원 탈퇴
+     */
+    @Transactional
+    public void deactivateUser(Long userId) {
+        User user = findUserById(userId);
+        user.deactivate();
+    }
+
+    // ===== Private Methods =====
+
+    private User findUserById(Long userId) {
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+    }
+
+    private String getTitleName(Long titleId) {
+        if (titleId == null) return null;
+        return titleRepository.findById(titleId)
+                .map(Title::getName)
+                .orElse(null);
     }
 }

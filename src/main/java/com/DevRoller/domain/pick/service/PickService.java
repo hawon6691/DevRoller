@@ -1,18 +1,14 @@
 package com.devroller.domain.pick.service;
 
+import com.devroller.domain.idea.dto.IdeaResponse;
 import com.devroller.domain.idea.entity.Idea;
-import com.devroller.domain.idea.entity.UserIdea;
 import com.devroller.domain.idea.repository.IdeaRepository;
-import com.devroller.domain.idea.repository.UserIdeaRepository;
-import com.devroller.domain.idea.service.IdeaService;
 import com.devroller.domain.pick.dto.PickRequest;
 import com.devroller.domain.pick.dto.PickResponse;
-import com.devroller.domain.pick.dto.PickHistoryResponse;
 import com.devroller.domain.pick.entity.PickHistory;
 import com.devroller.domain.pick.repository.PickHistoryRepository;
-import com.devroller.domain.pick.strategy.*;
 import com.devroller.domain.user.entity.User;
-import com.devroller.domain.user.service.UserService;
+import com.devroller.domain.user.repository.UserRepository;
 import com.devroller.global.exception.BusinessException;
 import com.devroller.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -22,142 +18,215 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Collections;
 import java.util.List;
+import java.util.Random;
 import java.util.stream.Collectors;
 
-/**
- * 추첨 서비스
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PickService {
 
-    private final IdeaRepository ideaRepository;
-    private final UserIdeaRepository userIdeaRepository;
     private final PickHistoryRepository pickHistoryRepository;
-    private final UserService userService;
-    private final IdeaService ideaService;
-
-    private final RandomPickStrategy randomPickStrategy;
-    private final RoulettePickStrategy roulettePickStrategy;
-    private final LadderPickStrategy ladderPickStrategy;
-    private final LotteryPickStrategy lotteryPickStrategy;
+    private final IdeaRepository ideaRepository;
+    private final UserRepository userRepository;
+    private final Random random = new Random();
 
     /**
      * 추첨 실행
      */
     @Transactional
     public PickResponse pick(Long userId, PickRequest request) {
-        User user = userService.findById(userId);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
-        // 추첨 가능한 아이디어 목록 조회
-        List<Idea> availableIdeas = getAvailableIdeas(userId, request);
-
-        if (availableIdeas.isEmpty()) {
+        // 후보 아이디어 조회
+        List<Idea> candidates = getCandidates(request);
+        
+        if (candidates.isEmpty()) {
             throw new BusinessException(ErrorCode.NO_AVAILABLE_IDEAS);
         }
 
-        // 추첨 전략 선택
-        PickStrategy strategy = getStrategy(request.getPickMethod());
-
         // 추첨 실행
-        Idea pickedIdea = strategy.pick(availableIdeas);
+        Idea selectedIdea = executeDrawing(candidates, request.getMethod());
+        
+        // Pick 카운트 증가
+        selectedIdea.incrementPickCount();
 
-        if (pickedIdea == null) {
-            throw new BusinessException(ErrorCode.PICK_FAILED);
-        }
-
-        // 추첨 횟수 증가
-        pickedIdea.incrementPickCount();
-
-        // 추첨 기록 저장
+        // 기록 저장
         PickHistory history = PickHistory.builder()
                 .user(user)
-                .idea(pickedIdea)
-                .pickMethod(request.getPickMethod())
+                .idea(selectedIdea)
+                .pickMethod(request.getMethod())
                 .categoryFilter(request.getCategoryId() != null ? request.getCategoryId().toString() : null)
-                .difficultyFilter(request.getDifficulty() != null ? request.getDifficulty().name() : null)
+                .difficultyFilter(request.getDifficulty())
                 .build();
-
+        
         pickHistoryRepository.save(history);
-        log.info("User {} picked idea {} using {}", userId, pickedIdea.getId(), request.getPickMethod());
 
-        return PickResponse.from(pickedIdea, history.getId());
+        // 룰렛/사다리의 경우 후보 목록도 반환
+        if (request.getMethod() == PickHistory.PickMethod.ROULETTE ||
+            request.getMethod() == PickHistory.PickMethod.LADDER) {
+            List<IdeaResponse> candidateResponses = candidates.stream()
+                    .map(IdeaResponse::from)
+                    .collect(Collectors.toList());
+            return PickResponse.withCandidates(history, candidateResponses);
+        }
+
+        return PickResponse.from(history);
     }
 
     /**
-     * 추첨 후 프로젝트 시작
+     * 후보 아이디어 조회
      */
-    @Transactional
-    public void startProject(Long userId, Long ideaId) {
-        User user = userService.findById(userId);
-        Idea idea = ideaService.findById(ideaId);
-
-        // 이미 진행중인지 확인
-        if (userIdeaRepository.existsByUserIdAndIdeaId(userId, ideaId)) {
-            throw new BusinessException(ErrorCode.ALREADY_IN_PROGRESS);
+    private List<Idea> getCandidates(PickRequest request) {
+        List<Idea> ideas;
+        
+        // 카테고리 + 난이도 필터
+        if (request.getCategoryId() != null && request.getDifficulty() != null) {
+            Idea.Difficulty difficulty = Idea.Difficulty.valueOf(request.getDifficulty());
+            ideas = ideaRepository.findByCategoryIdAndDifficultyAndIsActiveTrue(
+                    request.getCategoryId(), difficulty);
+        }
+        // 카테고리 필터만
+        else if (request.getCategoryId() != null) {
+            int count = request.getCount() != null ? request.getCount() : 10;
+            ideas = ideaRepository.findRandomIdeasByCategory(request.getCategoryId(), count);
+        }
+        // 난이도 필터만
+        else if (request.getDifficulty() != null) {
+            Idea.Difficulty difficulty = Idea.Difficulty.valueOf(request.getDifficulty());
+            ideas = ideaRepository.findByDifficultyAndIsActiveTrue(difficulty);
+        }
+        // 필터 없음
+        else {
+            ideas = ideaRepository.findByIsActiveTrue();
         }
 
-        UserIdea userIdea = UserIdea.builder()
-                .user(user)
-                .idea(idea)
-                .build();
+        // 룰렛/사다리용 후보 수 제한
+        if ((request.getMethod() == PickHistory.PickMethod.ROULETTE ||
+             request.getMethod() == PickHistory.PickMethod.LADDER) && 
+            request.getCount() != null && ideas.size() > request.getCount()) {
+            Collections.shuffle(ideas);
+            ideas = ideas.subList(0, request.getCount());
+        }
 
-        userIdeaRepository.save(userIdea);
-        log.info("User {} started project {}", userId, ideaId);
+        return ideas;
+    }
+
+    /**
+     * 추첨 방식별 실행
+     */
+    private Idea executeDrawing(List<Idea> candidates, PickHistory.PickMethod method) {
+        return switch (method) {
+            case RANDOM -> randomPick(candidates);
+            case ROULETTE -> roulettePick(candidates);
+            case LADDER -> ladderPick(candidates);
+            case LOTTERY -> lotteryPick(candidates);
+        };
+    }
+
+    /**
+     * 랜덤 추첨
+     */
+    private Idea randomPick(List<Idea> candidates) {
+        int index = random.nextInt(candidates.size());
+        return candidates.get(index);
+    }
+
+    /**
+     * 룰렛 추첨 (가중치 적용 - 인기도 낮을수록 확률 높음)
+     */
+    private Idea roulettePick(List<Idea> candidates) {
+        // 역가중치 계산: pickCount가 낮을수록 높은 가중치
+        int maxPickCount = candidates.stream()
+                .mapToInt(Idea::getPickCount)
+                .max()
+                .orElse(1) + 1;
+
+        List<Integer> weights = candidates.stream()
+                .map(idea -> maxPickCount - idea.getPickCount())
+                .collect(Collectors.toList());
+
+        int totalWeight = weights.stream().mapToInt(Integer::intValue).sum();
+        int randomValue = random.nextInt(totalWeight);
+
+        int cumulativeWeight = 0;
+        for (int i = 0; i < candidates.size(); i++) {
+            cumulativeWeight += weights.get(i);
+            if (randomValue < cumulativeWeight) {
+                return candidates.get(i);
+            }
+        }
+
+        return candidates.get(candidates.size() - 1);
+    }
+
+    /**
+     * 사다리 추첨 (완전 랜덤)
+     */
+    private Idea ladderPick(List<Idea> candidates) {
+        return randomPick(candidates);
+    }
+
+    /**
+     * 복권 추첨 (난이도별 가중치)
+     */
+    private Idea lotteryPick(List<Idea> candidates) {
+        // 난이도별 가중치: HARD > MEDIUM > EASY
+        List<Integer> weights = candidates.stream()
+                .map(idea -> switch (idea.getDifficulty()) {
+                    case EASY -> 1;
+                    case MEDIUM -> 2;
+                    case HARD -> 3;
+                })
+                .collect(Collectors.toList());
+
+        int totalWeight = weights.stream().mapToInt(Integer::intValue).sum();
+        int randomValue = random.nextInt(totalWeight);
+
+        int cumulativeWeight = 0;
+        for (int i = 0; i < candidates.size(); i++) {
+            cumulativeWeight += weights.get(i);
+            if (randomValue < cumulativeWeight) {
+                return candidates.get(i);
+            }
+        }
+
+        return candidates.get(candidates.size() - 1);
     }
 
     /**
      * 추첨 기록 조회
      */
-    public Page<PickHistoryResponse> getPickHistory(Long userId, Pageable pageable) {
-        return pickHistoryRepository.findByUserId(userId, pageable)
-                .map(PickHistoryResponse::from);
+    public Page<PickResponse> getPickHistory(Long userId, Pageable pageable) {
+        return pickHistoryRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(PickResponse::from);
     }
 
     /**
      * 추첨 통계 조회
      */
-    public List<Object[]> getPickStatistics(Long userId) {
-        return pickHistoryRepository.countByUserIdGroupByPickMethod(userId);
+    public PickStatsResponse getPickStats(Long userId) {
+        long totalPicks = pickHistoryRepository.countByUserId(userId);
+        List<Object[]> methodStats = pickHistoryRepository.countByPickMethod(userId);
+        
+        return PickStatsResponse.builder()
+                .totalPicks(totalPicks)
+                .methodStats(methodStats.stream()
+                        .collect(Collectors.toMap(
+                                arr -> ((PickHistory.PickMethod) arr[0]).name(),
+                                arr -> ((Long) arr[1]).intValue()
+                        )))
+                .build();
     }
 
-    /**
-     * 사용자의 총 추첨 횟수
-     */
-    public long getTotalPickCount(Long userId) {
-        return pickHistoryRepository.countByUserId(userId);
-    }
-
-    /**
-     * 추첨 가능한 아이디어 목록 조회
-     */
-    private List<Idea> getAvailableIdeas(Long userId, PickRequest request) {
-        Long categoryId = request.getCategoryId();
-        Idea.Difficulty difficulty = request.getDifficulty();
-
-        if (categoryId != null && difficulty != null) {
-            return ideaRepository.findAvailableIdeasForUserByCategoryAndDifficulty(userId, categoryId, difficulty);
-        } else if (categoryId != null) {
-            return ideaRepository.findAvailableIdeasForUserByCategory(userId, categoryId);
-        } else if (difficulty != null) {
-            return ideaRepository.findAvailableIdeasForUserByDifficulty(userId, difficulty);
-        } else {
-            return ideaRepository.findAvailableIdeasForUser(userId);
-        }
-    }
-
-    /**
-     * 추첨 전략 선택
-     */
-    private PickStrategy getStrategy(PickHistory.PickMethod method) {
-        return switch (method) {
-            case RANDOM -> randomPickStrategy;
-            case ROULETTE -> roulettePickStrategy;
-            case LADDER -> ladderPickStrategy;
-            case LOTTERY -> lotteryPickStrategy;
-        };
+    @lombok.Builder
+    @lombok.Getter
+    public static class PickStatsResponse {
+        private long totalPicks;
+        private java.util.Map<String, Integer> methodStats;
     }
 }

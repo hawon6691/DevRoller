@@ -15,7 +15,7 @@ public class User extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_id")
+    @Column(name = "id")
     private Long id;
 
     @Column(nullable = false, unique = true, length = 100)
@@ -105,6 +105,12 @@ public class User extends BaseEntity {
     }
     public void changePassword(String newPassword) { this.password = newPassword; }
     public void deactivate() { this.status = UserStatus.INACTIVE; }
+    public void updateStreak(int streak) { 
+        this.currentStreak = streak;
+        if (streak > this.maxStreak) {
+            this.maxStreak = streak;
+        }
+    }
 
     public enum Role { USER, ADMIN }
     public enum UserStatus { ACTIVE, INACTIVE, BANNED }

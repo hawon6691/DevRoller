@@ -8,14 +8,15 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 @Entity
-@Table(name = "idea_tags")
+@Table(name = "idea_tags",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"idea_id", "tag_id"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class IdeaTag {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "idea_tag_id")
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)

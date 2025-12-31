@@ -18,7 +18,7 @@ public class Idea extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "idea_id")
+    @Column(name = "id")
     private Long id;
 
     @Column(nullable = false, length = 100)
@@ -75,6 +75,19 @@ public class Idea extends BaseEntity {
         this.referenceUrl = referenceUrl;
     }
 
+    // 수정 메서드
+    public void update(String title, String description, Category category,
+                       Difficulty difficulty, Integer estimatedHours,
+                       String techStack, String referenceUrl) {
+        if (title != null) this.title = title;
+        if (description != null) this.description = description;
+        if (category != null) this.category = category;
+        if (difficulty != null) this.difficulty = difficulty;
+        if (estimatedHours != null) this.estimatedHours = estimatedHours;
+        if (techStack != null) this.techStack = techStack;
+        if (referenceUrl != null) this.referenceUrl = referenceUrl;
+    }
+
     public void incrementPickCount() { this.pickCount++; }
     public void incrementCompletedCount() { this.completedCount++; }
     public void incrementLikeCount() { this.likeCount++; }
@@ -82,6 +95,7 @@ public class Idea extends BaseEntity {
     public void updateAverageRating(Double newAverage) { this.averageRating = newAverage; }
     public void addTag(IdeaTag ideaTag) { this.ideaTags.add(ideaTag); }
     public void removeTag(IdeaTag ideaTag) { this.ideaTags.remove(ideaTag); }
+    public void clearTags() { this.ideaTags.clear(); }
     public void activate() { this.isActive = true; }
     public void deactivate() { this.isActive = false; }
 

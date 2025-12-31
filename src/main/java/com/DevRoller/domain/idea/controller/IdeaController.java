@@ -9,98 +9,161 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
-import org.springframework.data.web.PageableDefault;
-import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
-/**
- * 아이디어 API Controller
- */
-@Tag(name = "Idea", description = "아이디어 API")
+@Tag(name = "Idea", description = "아이디어/주제 API")
 @RestController
-@RequestMapping("/api/ideas")
+@RequestMapping("/api/v1/ideas")
 @RequiredArgsConstructor
 public class IdeaController {
 
     private final IdeaService ideaService;
 
-    @Operation(summary = "아이디어 목록", description = "아이디어 목록을 페이징으로 조회합니다.")
+    @Operation(summary = "아이디어 목록 조회", description = "전체 아이디어를 페이징 조회합니다")
     @GetMapping
-    public ApiResponse<Page<IdeaResponse>> getIdeas(
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<IdeaResponse> response = ideaService.getIdeas(pageable);
-        return ApiResponse.success(response);
+    public ResponseEntity<ApiResponse<Page<IdeaResponse>>> getAllIdeas(Pageable pageable) {
+        Page<IdeaResponse> ideas = ideaService.getAllIdeas(pageable);
+        return ResponseEntity.ok(ApiResponse.success(ideas));
     }
 
-    @Operation(summary = "카테고리별 아이디어", description = "특정 카테고리의 아이디어 목록을 조회합니다.")
-    @GetMapping("/category/{categoryId}")
-    public ApiResponse<Page<IdeaResponse>> getIdeasByCategory(
-            @PathVariable Long categoryId,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<IdeaResponse> response = ideaService.getIdeasByCategory(categoryId, pageable);
-        return ApiResponse.success(response);
-    }
-
-    @Operation(summary = "아이디어 검색", description = "키워드로 아이디어를 검색합니다.")
-    @GetMapping("/search")
-    public ApiResponse<Page<IdeaResponse>> searchIdeas(
-            @ModelAttribute IdeaSearchRequest request,
-            @PageableDefault(size = 10, sort = "createdAt", direction = Sort.Direction.DESC) Pageable pageable) {
-        Page<IdeaResponse> response = ideaService.searchIdeas(request, pageable);
-        return ApiResponse.success(response);
-    }
-
-    @Operation(summary = "인기 아이디어", description = "가장 많이 추첨된 아이디어 목록을 조회합니다.")
-    @GetMapping("/popular")
-    public ApiResponse<List<IdeaResponse>> getPopularIdeas(
-            @RequestParam(defaultValue = "10") int limit) {
-        List<IdeaResponse> response = ideaService.getPopularIdeas(limit);
-        return ApiResponse.success(response);
-    }
-
-    @Operation(summary = "평점 높은 아이디어", description = "평점이 높은 아이디어 목록을 조회합니다.")
-    @GetMapping("/top-rated")
-    public ApiResponse<List<IdeaResponse>> getTopRatedIdeas(
-            @RequestParam(defaultValue = "10") int limit) {
-        List<IdeaResponse> response = ideaService.getTopRatedIdeas(limit);
-        return ApiResponse.success(response);
-    }
-
-    @Operation(summary = "아이디어 상세 조회", description = "특정 아이디어의 상세 정보를 조회합니다.")
+    @Operation(summary = "아이디어 단건 조회")
     @GetMapping("/{ideaId}")
-    public ApiResponse<IdeaResponse> getIdea(@PathVariable Long ideaId) {
-        IdeaResponse response = ideaService.getIdea(ideaId);
-        return ApiResponse.success(response);
+    public ResponseEntity<ApiResponse<IdeaResponse>> getIdea(@PathVariable Long ideaId) {
+        IdeaResponse idea = ideaService.getIdeaById(ideaId);
+        return ResponseEntity.ok(ApiResponse.success(idea));
     }
 
-    @Operation(summary = "아이디어 생성 (관리자)", description = "새로운 아이디어를 생성합니다.")
+    @Operation(summary = "카테고리별 아이디어 조회")
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<ApiResponse<Page<IdeaResponse>>> getIdeasByCategory(
+            @PathVariable Long categoryId, Pageable pageable) {
+        Page<IdeaResponse> ideas = ideaService.getIdeasByCategory(categoryId, pageable);
+        return ResponseEntity.ok(ApiResponse.success(ideas));
+    }
+
+    @Operation(summary = "난이도별 아이디어 조회")
+    @GetMapping("/difficulty/{difficulty}")
+    public ResponseEntity<ApiResponse<Page<IdeaResponse>>> getIdeasByDifficulty(
+            @PathVariable String difficulty, Pageable pageable) {
+        Page<IdeaResponse> ideas = ideaService.getIdeasByDifficulty(difficulty, pageable);
+        return ResponseEntity.ok(ApiResponse.success(ideas));
+    }
+
+    @Operation(summary = "인기 아이디어 조회")
+    @GetMapping("/popular")
+    public ResponseEntity<ApiResponse<Page<IdeaResponse>>> getPopularIdeas(Pageable pageable) {
+        Page<IdeaResponse> ideas = ideaService.getPopularIdeas(pageable);
+        return ResponseEntity.ok(ApiResponse.success(ideas));
+    }
+
+    @Operation(summary = "평점 높은 아이디어 조회")
+    @GetMapping("/top-rated")
+    public ResponseEntity<ApiResponse<Page<IdeaResponse>>> getTopRatedIdeas(Pageable pageable) {
+        Page<IdeaResponse> ideas = ideaService.getTopRatedIdeas(pageable);
+        return ResponseEntity.ok(ApiResponse.success(ideas));
+    }
+
+    @Operation(summary = "아이디어 검색")
+    @GetMapping("/search")
+    public ResponseEntity<ApiResponse<Page<IdeaResponse>>> searchIdeas(
+            @RequestParam String keyword, Pageable pageable) {
+        Page<IdeaResponse> ideas = ideaService.searchIdeas(keyword, pageable);
+        return ResponseEntity.ok(ApiResponse.success(ideas));
+    }
+
+    @Operation(summary = "아이디어 생성 (관리자)")
     @PostMapping
-    @ResponseStatus(HttpStatus.CREATED)
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<IdeaResponse> createIdea(@Valid @RequestBody IdeaCreateRequest request) {
-        IdeaResponse response = ideaService.createIdea(request);
-        return ApiResponse.success("아이디어가 생성되었습니다.", response);
+    public ResponseEntity<ApiResponse<IdeaResponse>> createIdea(
+            @Valid @RequestBody IdeaCreateRequest request) {
+        IdeaResponse idea = ideaService.createIdea(request);
+        return ResponseEntity.ok(ApiResponse.success(idea));
     }
 
-    @Operation(summary = "아이디어 수정 (관리자)", description = "아이디어 정보를 수정합니다.")
-    @PutMapping("/{ideaId}")
+    @Operation(summary = "아이디어 수정 (관리자)")
+    @PatchMapping("/{ideaId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<IdeaResponse> updateIdea(
+    public ResponseEntity<ApiResponse<IdeaResponse>> updateIdea(
             @PathVariable Long ideaId,
             @Valid @RequestBody IdeaUpdateRequest request) {
-        IdeaResponse response = ideaService.updateIdea(ideaId, request);
-        return ApiResponse.success("아이디어가 수정되었습니다.", response);
+        IdeaResponse idea = ideaService.updateIdea(ideaId, request);
+        return ResponseEntity.ok(ApiResponse.success(idea));
     }
 
-    @Operation(summary = "아이디어 삭제 (관리자)", description = "아이디어를 삭제(비활성화)합니다.")
+    @Operation(summary = "아이디어 삭제 (관리자)")
     @DeleteMapping("/{ideaId}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ApiResponse<Void> deleteIdea(@PathVariable Long ideaId) {
+    public ResponseEntity<ApiResponse<Void>> deleteIdea(@PathVariable Long ideaId) {
         ideaService.deleteIdea(ideaId);
-        return ApiResponse.success("아이디어가 삭제되었습니다.", null);
+        return ResponseEntity.ok(ApiResponse.success(null));
+    }
+
+    // ==================== 프로젝트 진행 API ====================
+
+    @Operation(summary = "프로젝트 시작", description = "아이디어를 선택하여 프로젝트를 시작합니다")
+    @PostMapping("/{ideaId}/start")
+    public ResponseEntity<ApiResponse<UserIdeaResponse>> startProject(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long ideaId) {
+        Long userId = Long.parseLong(jwt.getSubject());
+        UserIdeaResponse response = ideaService.startProject(userId, ideaId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "프로젝트 완료")
+    @PostMapping("/{ideaId}/complete")
+    public ResponseEntity<ApiResponse<UserIdeaResponse>> completeProject(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long ideaId,
+            @RequestParam(required = false) String githubUrl) {
+        Long userId = Long.parseLong(jwt.getSubject());
+        UserIdeaResponse response = ideaService.completeProject(userId, ideaId, githubUrl);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "프로젝트 포기")
+    @PostMapping("/{ideaId}/abandon")
+    public ResponseEntity<ApiResponse<UserIdeaResponse>> abandonProject(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long ideaId) {
+        Long userId = Long.parseLong(jwt.getSubject());
+        UserIdeaResponse response = ideaService.abandonProject(userId, ideaId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "진행률 업데이트")
+    @PatchMapping("/{ideaId}/progress")
+    public ResponseEntity<ApiResponse<UserIdeaResponse>> updateProgress(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable Long ideaId,
+            @RequestParam Integer progress) {
+        Long userId = Long.parseLong(jwt.getSubject());
+        UserIdeaResponse response = ideaService.updateProgress(userId, ideaId, progress);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
+    @Operation(summary = "내 프로젝트 목록")
+    @GetMapping("/my-projects")
+    public ResponseEntity<ApiResponse<Page<UserIdeaResponse>>> getMyProjects(
+            @AuthenticationPrincipal Jwt jwt,
+            Pageable pageable) {
+        Long userId = Long.parseLong(jwt.getSubject());
+        Page<UserIdeaResponse> projects = ideaService.getMyProjects(userId, pageable);
+        return ResponseEntity.ok(ApiResponse.success(projects));
+    }
+
+    @Operation(summary = "상태별 내 프로젝트 목록")
+    @GetMapping("/my-projects/{status}")
+    public ResponseEntity<ApiResponse<Page<UserIdeaResponse>>> getMyProjectsByStatus(
+            @AuthenticationPrincipal Jwt jwt,
+            @PathVariable String status,
+            Pageable pageable) {
+        Long userId = Long.parseLong(jwt.getSubject());
+        Page<UserIdeaResponse> projects = ideaService.getMyProjectsByStatus(userId, status, pageable);
+        return ResponseEntity.ok(ApiResponse.success(projects));
     }
 }

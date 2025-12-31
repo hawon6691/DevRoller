@@ -1,43 +1,39 @@
 package com.devroller.domain.pick.dto;
 
-import com.devroller.domain.idea.entity.Idea;
+import com.devroller.domain.idea.dto.IdeaResponse;
+import com.devroller.domain.pick.entity.PickHistory;
 import lombok.Builder;
 import lombok.Getter;
 
-/**
- * 추첨 결과 응답 DTO
- */
+import java.time.LocalDateTime;
+import java.util.List;
+
 @Getter
 @Builder
 public class PickResponse {
 
-    private Long pickHistoryId;
-    private Long ideaId;
-    private String title;
-    private String description;
-    private String categoryName;
-    private String difficulty;
-    private Integer experiencePoints;
-    private Integer estimatedHours;
-    private String techStack;
-    private String referenceUrl;
-    private Integer pickCount;
-    private Double averageRating;
+    private Long pickId;
+    private String pickMethod;
+    private IdeaResponse idea;
+    private List<IdeaResponse> candidates;  // 룰렛/사다리용 후보 목록
+    private LocalDateTime pickedAt;
 
-    public static PickResponse from(Idea idea, Long pickHistoryId) {
+    public static PickResponse from(PickHistory history) {
         return PickResponse.builder()
-                .pickHistoryId(pickHistoryId)
-                .ideaId(idea.getId())
-                .title(idea.getTitle())
-                .description(idea.getDescription())
-                .categoryName(idea.getCategory().getName())
-                .difficulty(idea.getDifficulty().name())
-                .experiencePoints(idea.getExperiencePoints())
-                .estimatedHours(idea.getEstimatedHours())
-                .techStack(idea.getTechStack())
-                .referenceUrl(idea.getReferenceUrl())
-                .pickCount(idea.getPickCount())
-                .averageRating(idea.getAverageRating())
+                .pickId(history.getId())
+                .pickMethod(history.getPickMethod().name())
+                .idea(IdeaResponse.from(history.getIdea()))
+                .pickedAt(history.getCreatedAt())
+                .build();
+    }
+
+    public static PickResponse withCandidates(PickHistory history, List<IdeaResponse> candidates) {
+        return PickResponse.builder()
+                .pickId(history.getId())
+                .pickMethod(history.getPickMethod().name())
+                .idea(IdeaResponse.from(history.getIdea()))
+                .candidates(candidates)
+                .pickedAt(history.getCreatedAt())
                 .build();
     }
 }

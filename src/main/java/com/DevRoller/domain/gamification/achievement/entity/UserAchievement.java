@@ -18,7 +18,7 @@ public class UserAchievement extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_achievement_id")
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -29,7 +29,7 @@ public class UserAchievement extends BaseEntity {
     @JoinColumn(name = "achievement_id", nullable = false)
     private Achievement achievement;
 
-    @Column(nullable = false)
+    @Column
     private LocalDateTime achievedAt;
 
     @Column(nullable = false)
@@ -42,21 +42,38 @@ public class UserAchievement extends BaseEntity {
     public UserAchievement(User user, Achievement achievement) {
         this.user = user;
         this.achievement = achievement;
+        this.currentProgress = 0;
+        this.isCompleted = false;
     }
 
+    // 진행도 1 증가
     public void incrementProgress() {
         this.currentProgress++;
+        checkCompletion();
+    }
+
+    // 진행도 직접 설정
+    public void updateProgress(int newProgress) {
+        this.currentProgress = newProgress;
+        checkCompletion();
+    }
+
+    // 완료 체크
+    private void checkCompletion() {
         if (!this.isCompleted && this.currentProgress >= this.achievement.getRequiredValue()) {
             this.isCompleted = true;
             this.achievedAt = LocalDateTime.now();
         }
     }
 
+    // 즉시 완료 처리
     public void complete() {
+        this.currentProgress = this.achievement.getRequiredValue();
         this.isCompleted = true;
         this.achievedAt = LocalDateTime.now();
     }
 
+    // 진행률 퍼센트
     public int getProgressPercent() {
         if (this.achievement.getRequiredValue() == 0) return 100;
         return Math.min(100, (this.currentProgress * 100) / this.achievement.getRequiredValue());

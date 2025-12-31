@@ -17,7 +17,7 @@ public class Suggestion extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "suggestion_id")
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -59,6 +59,16 @@ public class Suggestion extends BaseEntity {
         this.category = category;
         this.difficulty = difficulty;
         this.techStack = techStack;
+    }
+
+    // 수정 메서드
+    public void update(String title, String description, Category category,
+                       String difficulty, String techStack) {
+        if (title != null) this.title = title;
+        if (description != null) this.description = description;
+        if (category != null) this.category = category;
+        if (difficulty != null) this.difficulty = difficulty;
+        if (techStack != null) this.techStack = techStack;
     }
 
     public void approve(String adminComment) {

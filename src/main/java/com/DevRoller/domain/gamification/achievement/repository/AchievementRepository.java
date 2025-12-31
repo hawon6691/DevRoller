@@ -2,30 +2,30 @@ package com.devroller.domain.gamification.achievement.repository;
 
 import com.devroller.domain.gamification.achievement.entity.Achievement;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
 
-/**
- * 업적 Repository
- */
+@Repository
 public interface AchievementRepository extends JpaRepository<Achievement, Long> {
 
-    // 코드로 업적 조회
     Optional<Achievement> findByCode(String code);
-
-    // 코드 존재 여부
+    
     boolean existsByCode(String code);
-
+    
     // 타입별 업적 조회
-    List<Achievement> findByTypeOrderByDisplayOrderAsc(Achievement.AchievementType type);
-
-    // 히든 업적 제외 조회
+    List<Achievement> findByType(Achievement.AchievementType type);
+    
+    // 활성화된 업적만 조회
     List<Achievement> findByIsHiddenFalseOrderByDisplayOrderAsc();
-
-    // 전체 업적 (정렬)
+    
+    // 숨겨진 업적 포함 전체 조회 (관리자용)
     List<Achievement> findAllByOrderByDisplayOrderAsc();
-
-    // 보상 경험치가 있는 업적만
-    List<Achievement> findByRewardExpGreaterThanOrderByDisplayOrderAsc(int exp);
+    
+    // 타입별 업적 조회 (표시순)
+    List<Achievement> findByTypeOrderByDisplayOrderAsc(Achievement.AchievementType type);
+    
+    // 보상 경험치가 있는 업적 조회
+    List<Achievement> findByRewardExpGreaterThan(int minExp);
 }

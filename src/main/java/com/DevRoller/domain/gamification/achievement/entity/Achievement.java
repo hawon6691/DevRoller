@@ -15,7 +15,7 @@ public class Achievement extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "achievement_id")
+    @Column(name = "id")
     private Long id;
 
     @Column(nullable = false, unique = true, length = 50)
@@ -24,14 +24,14 @@ public class Achievement extends BaseEntity {
     @Column(nullable = false, length = 100)
     private String name;
 
-    @Column(length = 300)
+    @Column(length = 500)
     private String description;
 
-    @Column(length = 100)
+    @Column(length = 50)
     private String icon;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 20)
+    @Column(nullable = false, length = 30)
     private AchievementType type;
 
     @Column(nullable = false)

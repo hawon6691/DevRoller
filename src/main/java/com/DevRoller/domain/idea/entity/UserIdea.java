@@ -18,7 +18,7 @@ public class UserIdea extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_idea_id")
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -54,6 +54,7 @@ public class UserIdea extends BaseEntity {
         this.idea = idea;
         this.status = Status.IN_PROGRESS;
         this.startedAt = LocalDateTime.now();
+        this.progressPercent = 0;
     }
 
     public void complete(String githubUrl) {
@@ -63,11 +64,23 @@ public class UserIdea extends BaseEntity {
         this.progressPercent = 100;
     }
 
-    public void abandon() { this.status = Status.ABANDONED; }
-    public void updateProgress(Integer percent) { 
-        if (percent >= 0 && percent <= 100) this.progressPercent = percent; 
+    public void abandon() { 
+        this.status = Status.ABANDONED; 
     }
-    public void updateMemo(String memo) { this.memo = memo; }
+    
+    public void updateProgress(Integer percent) { 
+        if (percent != null && percent >= 0 && percent <= 100) {
+            this.progressPercent = percent;
+        }
+    }
+    
+    public void updateMemo(String memo) { 
+        this.memo = memo; 
+    }
+    
+    public void updateGithubUrl(String githubUrl) {
+        this.githubUrl = githubUrl;
+    }
 
     public enum Status { IN_PROGRESS, COMPLETED, ABANDONED }
 }

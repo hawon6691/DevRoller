@@ -18,7 +18,7 @@ public class Review extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "review_id")
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -39,7 +39,7 @@ public class Review extends BaseEntity {
     private Integer actualHours = 0;
 
     @Enumerated(EnumType.STRING)
-    @Column(length = 20)
+    @Column(length = 30)
     private DifficultyFeedback difficultyFeedback;
 
     @Column(nullable = false)
@@ -54,6 +54,15 @@ public class Review extends BaseEntity {
         this.content = content;
         this.actualHours = actualHours != null ? actualHours : 0;
         this.difficultyFeedback = difficultyFeedback;
+    }
+
+    // 수정 메서드
+    public void update(Integer rating, String content, Integer actualHours, 
+                       DifficultyFeedback difficultyFeedback) {
+        if (rating != null) this.rating = rating;
+        if (content != null) this.content = content;
+        if (actualHours != null) this.actualHours = actualHours;
+        if (difficultyFeedback != null) this.difficultyFeedback = difficultyFeedback;
     }
 
     public void incrementLikeCount() { this.likeCount++; }

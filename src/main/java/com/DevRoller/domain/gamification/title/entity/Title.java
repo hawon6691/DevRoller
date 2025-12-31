@@ -15,7 +15,7 @@ public class Title extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "title_id")
+    @Column(name = "id")
     private Long id;
 
     @Column(nullable = false, unique = true, length = 50)

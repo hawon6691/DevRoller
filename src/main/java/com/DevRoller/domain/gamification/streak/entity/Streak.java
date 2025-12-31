@@ -11,14 +11,14 @@ import java.time.LocalDate;
 
 @Entity
 @Table(name = "streaks",
-       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "activity_date"}))
+       uniqueConstraints = @UniqueConstraint(columnNames = {"user_id", "activity_date", "activity_type"}))
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Streak extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "streak_id")
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -40,6 +40,7 @@ public class Streak extends BaseEntity {
         this.user = user;
         this.activityDate = activityDate;
         this.activityType = activityType;
+        this.count = 1;
     }
 
     public void incrementCount() { this.count++; }

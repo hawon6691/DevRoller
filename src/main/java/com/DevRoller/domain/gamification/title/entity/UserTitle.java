@@ -18,7 +18,7 @@ public class UserTitle extends BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    @Column(name = "user_title_id")
+    @Column(name = "id")
     private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
@@ -40,6 +40,7 @@ public class UserTitle extends BaseEntity {
         this.user = user;
         this.title = title;
         this.acquiredAt = LocalDateTime.now();
+        this.isEquipped = false;
     }
 
     public void equip() { this.isEquipped = true; }

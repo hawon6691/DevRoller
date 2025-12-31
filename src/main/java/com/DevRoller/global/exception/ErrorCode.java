@@ -41,6 +41,10 @@ public enum ErrorCode {
     INVALID_PICK_METHOD(HttpStatus.BAD_REQUEST, "P002", "잘못된 추첨 방식입니다."),
     ALREADY_IN_PROGRESS(HttpStatus.CONFLICT, "P003", "이미 진행 중인 프로젝트입니다."),
     ALREADY_COMPLETED(HttpStatus.CONFLICT, "P004", "이미 완료된 프로젝트입니다."),
+    NO_AVAILABLE_IDEAS(HttpStatus.NOT_FOUND, "P005", "추첨 가능한 아이디어가 없습니다."),
+    PICK_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "P006", "추첨에 실패했습니다."),
+    PROJECT_NOT_FOUND(HttpStatus.NOT_FOUND, "P007", "프로젝트를 찾을 수 없습니다."),
+    NOT_COMPLETED(HttpStatus.BAD_REQUEST, "P008", "완료되지 않은 프로젝트입니다."),
 
     // Gamification (G)
     ACHIEVEMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "G001", "업적을 찾을 수 없습니다."),
