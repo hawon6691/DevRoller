@@ -1,4 +1,4 @@
-package com.DevRoller.global.config;
+package com.devroller.global.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
