@@ -6,14 +6,11 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
-/**
- * 리뷰 응답 DTO
- */
 @Getter
 @Builder
 public class ReviewResponse {
 
-    private Long reviewId;
+    private Long id;
     private Long ideaId;
     private String ideaTitle;
     private Long userId;
@@ -24,10 +21,11 @@ public class ReviewResponse {
     private String difficultyFeedback;
     private Integer likeCount;
     private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
 
     public static ReviewResponse from(Review review) {
         return ReviewResponse.builder()
-                .reviewId(review.getId())
+                .id(review.getId())
                 .ideaId(review.getIdea().getId())
                 .ideaTitle(review.getIdea().getTitle())
                 .userId(review.getUser().getId())
@@ -35,10 +33,11 @@ public class ReviewResponse {
                 .rating(review.getRating())
                 .content(review.getContent())
                 .actualHours(review.getActualHours())
-                .difficultyFeedback(review.getDifficultyFeedback() != null 
-                        ? review.getDifficultyFeedback().name() : null)
+                .difficultyFeedback(review.getDifficultyFeedback() != null ? 
+                        review.getDifficultyFeedback().name() : null)
                 .likeCount(review.getLikeCount())
                 .createdAt(review.getCreatedAt())
+                .updatedAt(review.getUpdatedAt())
                 .build();
     }
 }

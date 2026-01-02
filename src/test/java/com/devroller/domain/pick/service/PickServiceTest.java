@@ -159,7 +159,7 @@ class PickServiceTest {
 
     @Nested
     @DisplayName("추첨 기록")
-    class PickHistory {
+    class PickHistoryTest {
 
         @Test
         @DisplayName("추첨시 기록 저장")

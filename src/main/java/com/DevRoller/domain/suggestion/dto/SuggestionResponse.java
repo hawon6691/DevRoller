@@ -6,20 +6,17 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
-/**
- * 제안 응답 DTO
- */
 @Getter
 @Builder
 public class SuggestionResponse {
 
-    private Long suggestionId;
+    private Long id;
     private Long userId;
     private String userNickname;
     private String title;
     private String description;
-    private Long categoryId;
     private String categoryName;
+    private Long categoryId;
     private String difficulty;
     private String techStack;
     private String status;
@@ -30,13 +27,15 @@ public class SuggestionResponse {
 
     public static SuggestionResponse from(Suggestion suggestion) {
         return SuggestionResponse.builder()
-                .suggestionId(suggestion.getId())
+                .id(suggestion.getId())
                 .userId(suggestion.getUser().getId())
                 .userNickname(suggestion.getUser().getNickname())
                 .title(suggestion.getTitle())
                 .description(suggestion.getDescription())
-                .categoryId(suggestion.getCategory() != null ? suggestion.getCategory().getId() : null)
-                .categoryName(suggestion.getCategory() != null ? suggestion.getCategory().getName() : null)
+                .categoryName(suggestion.getCategory() != null ? 
+                        suggestion.getCategory().getName() : null)
+                .categoryId(suggestion.getCategory() != null ? 
+                        suggestion.getCategory().getId() : null)
                 .difficulty(suggestion.getDifficulty())
                 .techStack(suggestion.getTechStack())
                 .status(suggestion.getStatus().name())

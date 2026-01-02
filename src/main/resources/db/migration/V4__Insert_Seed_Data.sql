@@ -6,7 +6,7 @@
 -- -----------------------------------------------------
 -- 카테고리 (Categories)
 -- -----------------------------------------------------
-INSERT INTO categories (name, description, icon, display_order) VALUES
+INSERT IGNORE INTO categories (name, description, icon, display_order) VALUES
 ('웹 프론트엔드', 'React, Vue, Angular 등 웹 프론트엔드 프로젝트', '🌐', 1),
 ('웹 백엔드', 'Spring, Node.js, Django 등 웹 백엔드 프로젝트', '⚙️', 2),
 ('풀스택', '프론트엔드와 백엔드를 모두 포함하는 프로젝트', '🔄', 3),
@@ -21,7 +21,7 @@ INSERT INTO categories (name, description, icon, display_order) VALUES
 -- -----------------------------------------------------
 -- 태그 (Tags)
 -- -----------------------------------------------------
-INSERT INTO tags (name, color) VALUES
+INSERT IGNORE INTO tags (name, color) VALUES
 ('JavaScript', '#F7DF1E'),
 ('TypeScript', '#3178C6'),
 ('Python', '#3776AB'),
@@ -57,7 +57,7 @@ INSERT INTO tags (name, color) VALUES
 -- 업적 (Achievements)
 -- -----------------------------------------------------
 -- 완료 횟수 기반
-INSERT INTO achievements (code, name, description, icon, type, required_value, reward_exp, is_hidden, display_order) VALUES
+INSERT IGNORE INTO achievements (code, name, description, icon, type, required_value, reward_exp, is_hidden, display_order) VALUES
 ('FIRST_COMPLETE', '첫 번째 완료', '첫 번째 프로젝트를 완료했습니다!', '🎉', 'COMPLETE_COUNT', 1, 100, FALSE, 1),
 ('COMPLETE_5', '성장하는 개발자', '5개의 프로젝트를 완료했습니다', '📈', 'COMPLETE_COUNT', 5, 200, FALSE, 2),
 ('COMPLETE_10', '꾸준한 개발자', '10개의 프로젝트를 완료했습니다', '💪', 'COMPLETE_COUNT', 10, 300, FALSE, 3),
@@ -66,20 +66,20 @@ INSERT INTO achievements (code, name, description, icon, type, required_value, r
 ('COMPLETE_100', '마스터 개발자', '100개의 프로젝트를 완료했습니다!', '👑', 'COMPLETE_COUNT', 100, 2000, FALSE, 6);
 
 -- 스트릭 기반
-INSERT INTO achievements (code, name, description, icon, type, required_value, reward_exp, is_hidden, display_order) VALUES
+INSERT IGNORE INTO achievements (code, name, description, icon, type, required_value, reward_exp, is_hidden, display_order) VALUES
 ('STREAK_3', '3일 연속', '3일 연속으로 프로젝트를 완료했습니다', '🔥', 'STREAK', 3, 150, FALSE, 10),
 ('STREAK_7', '일주일 연속', '7일 연속으로 프로젝트를 완료했습니다', '🔥🔥', 'STREAK', 7, 300, FALSE, 11),
 ('STREAK_14', '2주 연속', '14일 연속으로 프로젝트를 완료했습니다', '🔥🔥🔥', 'STREAK', 14, 500, FALSE, 12),
 ('STREAK_30', '한 달 연속', '30일 연속으로 프로젝트를 완료했습니다!', '💎', 'STREAK', 30, 1000, FALSE, 13);
 
 -- 난이도 기반
-INSERT INTO achievements (code, name, description, icon, type, required_value, reward_exp, is_hidden, display_order) VALUES
+INSERT IGNORE INTO achievements (code, name, description, icon, type, required_value, reward_exp, is_hidden, display_order) VALUES
 ('HARD_FIRST', '도전자', '첫 번째 HARD 난이도 프로젝트를 완료했습니다', '⚔️', 'DIFFICULTY', 1, 200, FALSE, 20),
 ('HARD_5', '용감한 개발자', 'HARD 난이도 프로젝트 5개를 완료했습니다', '🛡️', 'DIFFICULTY', 5, 400, FALSE, 21),
 ('HARD_10', '두려움 없는 개발자', 'HARD 난이도 프로젝트 10개를 완료했습니다', '⚡', 'DIFFICULTY', 10, 800, FALSE, 22);
 
 -- 특별 업적
-INSERT INTO achievements (code, name, description, icon, type, required_value, reward_exp, is_hidden, display_order) VALUES
+INSERT IGNORE INTO achievements (code, name, description, icon, type, required_value, reward_exp, is_hidden, display_order) VALUES
 ('EARLY_BIRD', '얼리버드', '오전 6시 이전에 프로젝트를 완료했습니다', '🌅', 'SPECIAL', 1, 100, TRUE, 30),
 ('NIGHT_OWL', '올빼미', '새벽 2시 이후에 프로젝트를 완료했습니다', '🦉', 'SPECIAL', 1, 100, TRUE, 31),
 ('WEEKEND_WARRIOR', '주말 전사', '주말에 3개의 프로젝트를 완료했습니다', '🗡️', 'SPECIAL', 3, 200, TRUE, 32);
@@ -88,7 +88,7 @@ INSERT INTO achievements (code, name, description, icon, type, required_value, r
 -- 칭호 (Titles)
 -- -----------------------------------------------------
 -- 레벨 기반
-INSERT INTO titles (code, name, description, type, required_level, rarity, display_order) VALUES
+INSERT IGNORE INTO titles (code, name, description, type, required_level, rarity, display_order) VALUES
 ('LV1_BEGINNER', '입문자', '개발의 세계에 첫 발을 내딛다', 'LEVEL', 1, 'COMMON', 1),
 ('LV5_NOVICE', '견습 개발자', '기초를 익히기 시작하다', 'LEVEL', 5, 'COMMON', 2),
 ('LV10_APPRENTICE', '수습 개발자', '본격적인 성장의 시작', 'LEVEL', 10, 'UNCOMMON', 3),
@@ -101,7 +101,7 @@ INSERT INTO titles (code, name, description, type, required_level, rarity, displ
 ('LV50_LEGEND', '전설', '전설로 남을 개발자', 'LEVEL', 50, 'LEGENDARY', 10);
 
 -- 업적 연동
-INSERT INTO titles (code, name, description, type, required_achievement_code, rarity, display_order) VALUES
+INSERT IGNORE INTO titles (code, name, description, type, required_achievement_code, rarity, display_order) VALUES
 ('FIRST_STEP', '첫 걸음', '위대한 여정의 시작', 'ACHIEVEMENT', 'FIRST_COMPLETE', 'COMMON', 20),
 ('FLAME_KEEPER', '불꽃 수호자', '열정의 불꽃을 지키다', 'ACHIEVEMENT', 'STREAK_7', 'RARE', 21),
 ('IRON_WILL', '강철 의지', '한 달간 쉬지 않다', 'ACHIEVEMENT', 'STREAK_30', 'LEGENDARY', 22),

@@ -58,4 +58,8 @@ public class JwtTokenProvider {
     public long getAccessTokenExpiration() {
         return accessTokenExpiration;
     }
+
+    public long getAccessTokenExpirationSeconds() {
+        return accessTokenExpiration / 1000;
+    }
 }

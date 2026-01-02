@@ -30,13 +30,22 @@ public interface UserAchievementRepository extends JpaRepository<UserAchievement
     // 사용자의 완료된 업적 수
     @Query("SELECT COUNT(ua) FROM UserAchievement ua WHERE ua.user.id = :userId AND ua.isCompleted = true")
     int countCompletedByUserId(@Param("userId") Long userId);
-    
+
+    long countByUserIdAndIsCompletedTrue(Long userId);
+
     // 최근 달성 업적 조회
     @Query("SELECT ua FROM UserAchievement ua " +
            "WHERE ua.user.id = :userId AND ua.isCompleted = true " +
            "ORDER BY ua.achievedAt DESC")
     List<UserAchievement> findRecentlyCompleted(@Param("userId") Long userId);
-    
+
+    @Query("SELECT ua FROM UserAchievement ua " +
+           "WHERE ua.user.id = :userId AND ua.isCompleted = true " +
+           "ORDER BY ua.achievedAt DESC")
+    org.springframework.data.domain.Page<UserAchievement> findRecentAchievements(
+            @Param("userId") Long userId,
+            org.springframework.data.domain.Pageable pageable);
+
     // 특정 업적을 달성한 사용자 수
     @Query("SELECT COUNT(ua) FROM UserAchievement ua " +
            "WHERE ua.achievement.id = :achievementId AND ua.isCompleted = true")

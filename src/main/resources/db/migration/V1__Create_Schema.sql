@@ -143,13 +143,14 @@ CREATE TABLE pick_histories (
     category_filter VARCHAR(50),
     difficulty_filter VARCHAR(20),
     created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    
+    updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+
     INDEX idx_pick_histories_user (user_id),
     INDEX idx_pick_histories_created (created_at DESC),
-    
-    CONSTRAINT fk_pick_histories_user FOREIGN KEY (user_id) 
+
+    CONSTRAINT fk_pick_histories_user FOREIGN KEY (user_id)
         REFERENCES users(id) ON DELETE CASCADE,
-    CONSTRAINT fk_pick_histories_idea FOREIGN KEY (idea_id) 
+    CONSTRAINT fk_pick_histories_idea FOREIGN KEY (idea_id)
         REFERENCES ideas(id) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 

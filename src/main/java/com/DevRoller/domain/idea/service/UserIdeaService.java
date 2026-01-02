@@ -1,16 +1,19 @@
 package com.devroller.domain.idea.service;
 
+import com.devroller.domain.gamification.event.ProjectCompletedEvent;
 import com.devroller.domain.idea.dto.UserIdeaResponse;
 import com.devroller.domain.idea.dto.UserIdeaUpdateRequest;
 import com.devroller.domain.idea.entity.Idea;
 import com.devroller.domain.idea.entity.UserIdea;
+import com.devroller.domain.idea.repository.IdeaRepository;
 import com.devroller.domain.idea.repository.UserIdeaRepository;
 import com.devroller.domain.user.entity.User;
-import com.devroller.domain.user.service.UserService;
+import com.devroller.domain.user.repository.UserRepository;
 import com.devroller.global.exception.BusinessException;
 import com.devroller.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
@@ -29,8 +32,9 @@ import java.util.stream.Collectors;
 public class UserIdeaService {
 
     private final UserIdeaRepository userIdeaRepository;
-    private final UserService userService;
-    private final IdeaService ideaService;
+    private final UserRepository userRepository;
+    private final IdeaRepository ideaRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     /**
      * 사용자의 진행중인 프로젝트 목록
@@ -64,13 +68,15 @@ public class UserIdeaService {
      */
     @Transactional
     public UserIdeaResponse startProject(Long userId, Long ideaId) {
-        User user = userService.findById(userId);
-        Idea idea = ideaService.findById(ideaId);
-
         // 이미 존재하는지 확인
         if (userIdeaRepository.existsByUserIdAndIdeaId(userId, ideaId)) {
             throw new BusinessException(ErrorCode.ALREADY_IN_PROGRESS);
         }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        Idea idea = ideaRepository.findById(ideaId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.IDEA_NOT_FOUND));
 
         UserIdea userIdea = UserIdea.builder()
                 .user(user)
@@ -98,16 +104,17 @@ public class UserIdeaService {
         userIdea.complete(githubUrl);
 
         // 아이디어 완료 횟수 증가
-        ideaService.incrementCompletedCount(ideaId);
+        Idea idea = userIdea.getIdea();
+        idea.incrementCompletedCount();
 
         // 사용자 완료 처리 (스트릭, 총 완료수)
-        userService.completeProject(userId);
+        User user = userIdea.getUser();
+        user.completeProject();
 
-        // 경험치 추가
-        int exp = userIdea.getIdea().getExperiencePoints();
-        userService.addExperience(userId, exp);
+        log.info("User {} completed project {}", userId, ideaId);
 
-        log.info("User {} completed project {} (+{}XP)", userId, ideaId, exp);
+        // 프로젝트 완료 이벤트 발행 (업적/칭호/경험치 자동 처리)
+        eventPublisher.publishEvent(new ProjectCompletedEvent(this, user, idea));
 
         return UserIdeaResponse.from(userIdea);
     }

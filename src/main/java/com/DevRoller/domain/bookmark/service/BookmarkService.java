@@ -5,9 +5,9 @@ import com.devroller.domain.bookmark.dto.BookmarkResponse;
 import com.devroller.domain.bookmark.entity.Bookmark;
 import com.devroller.domain.bookmark.repository.BookmarkRepository;
 import com.devroller.domain.idea.entity.Idea;
-import com.devroller.domain.idea.service.IdeaService;
+import com.devroller.domain.idea.repository.IdeaRepository;
 import com.devroller.domain.user.entity.User;
-import com.devroller.domain.user.service.UserService;
+import com.devroller.domain.user.repository.UserRepository;
 import com.devroller.global.exception.BusinessException;
 import com.devroller.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
@@ -17,12 +17,6 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-/**
- * 북마크 서비스
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -30,53 +24,37 @@ import java.util.stream.Collectors;
 public class BookmarkService {
 
     private final BookmarkRepository bookmarkRepository;
-    private final UserService userService;
-    private final IdeaService ideaService;
-
-    /**
-     * 북마크 목록 조회
-     */
-    public List<BookmarkResponse> getBookmarks(Long userId) {
-        return bookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId)
-                .stream()
-                .map(BookmarkResponse::from)
-                .collect(Collectors.toList());
-    }
-
-    /**
-     * 북마크 목록 조회 (페이징)
-     */
-    public Page<BookmarkResponse> getBookmarks(Long userId, Pageable pageable) {
-        return bookmarkRepository.findByUserId(userId, pageable)
-                .map(BookmarkResponse::from);
-    }
+    private final UserRepository userRepository;
+    private final IdeaRepository ideaRepository;
 
     /**
      * 북마크 추가
      */
     @Transactional
-    public BookmarkResponse addBookmark(Long userId, BookmarkRequest request) {
-        // 이미 북마크한 경우
-        if (bookmarkRepository.existsByUserIdAndIdeaId(userId, request.getIdeaId())) {
+    public BookmarkResponse addBookmark(Long userId, Long ideaId, BookmarkRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        
+        Idea idea = ideaRepository.findById(ideaId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.IDEA_NOT_FOUND));
+
+        // 중복 체크
+        if (bookmarkRepository.existsByUserIdAndIdeaId(userId, ideaId)) {
             throw new BusinessException(ErrorCode.ALREADY_BOOKMARKED);
         }
-
-        User user = userService.findById(userId);
-        Idea idea = ideaService.findById(request.getIdeaId());
 
         Bookmark bookmark = Bookmark.builder()
                 .user(user)
                 .idea(idea)
-                .memo(request.getMemo())
+                .memo(request != null ? request.getMemo() : null)
                 .build();
 
-        // 아이디어 좋아요 수 증가
+        bookmarkRepository.save(bookmark);
+        
+        // 아이디어 좋아요 카운트 증가
         idea.incrementLikeCount();
 
-        Bookmark saved = bookmarkRepository.save(bookmark);
-        log.info("User {} bookmarked idea {}", userId, request.getIdeaId());
-
-        return BookmarkResponse.from(saved);
+        return BookmarkResponse.from(bookmark);
     }
 
     /**
@@ -87,11 +65,10 @@ public class BookmarkService {
         Bookmark bookmark = bookmarkRepository.findByUserIdAndIdeaId(userId, ideaId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.BOOKMARK_NOT_FOUND));
 
-        // 아이디어 좋아요 수 감소
+        // 아이디어 좋아요 카운트 감소
         bookmark.getIdea().decrementLikeCount();
 
         bookmarkRepository.delete(bookmark);
-        log.info("User {} removed bookmark for idea {}", userId, ideaId);
     }
 
     /**
@@ -107,6 +84,14 @@ public class BookmarkService {
     }
 
     /**
+     * 내 북마크 목록 조회
+     */
+    public Page<BookmarkResponse> getMyBookmarks(Long userId, Pageable pageable) {
+        return bookmarkRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(BookmarkResponse::from);
+    }
+
+    /**
      * 북마크 여부 확인
      */
     public boolean isBookmarked(Long userId, Long ideaId) {
@@ -114,9 +99,9 @@ public class BookmarkService {
     }
 
     /**
-     * 북마크 수
+     * 북마크 수 조회
      */
-    public long getBookmarkCount(Long userId) {
+    public int getBookmarkCount(Long userId) {
         return bookmarkRepository.countByUserId(userId);
     }
 }

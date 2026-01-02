@@ -1,7 +1,15 @@
+buildscript {
+    dependencies {
+        classpath 'com.mysql:mysql-connector-j:8.0.33'
+        classpath 'org.flywaydb:flyway-mysql:10.20.1'
+    }
+}
+
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.4.1'
     id 'io.spring.dependency-management' version '1.1.7'
+    id 'org.flywaydb.flyway' version '10.20.1'
 }
 
 group = 'com.devroller'
@@ -59,4 +67,13 @@ tasks.named('test') {
 // Encoding
 tasks.withType(JavaCompile) {
     options.encoding = 'UTF-8'
+}
+
+// Flyway Configuration
+flyway {
+    url = 'jdbc:mysql://localhost:3306/devrollerdb?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=Asia/Seoul&characterEncoding=UTF-8'
+    user = 'hawon'
+    password = '1234'
+    locations = ['classpath:db/migration']
+    cleanDisabled = false
 }

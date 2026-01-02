@@ -62,7 +62,15 @@ public enum ErrorCode {
     REVIEW_NOT_ALLOWED(HttpStatus.FORBIDDEN, "R003", "완료한 프로젝트만 리뷰할 수 있습니다."),
 
     // Suggestion (S)
-    SUGGESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "제안을 찾을 수 없습니다.");
+    SUGGESTION_NOT_FOUND(HttpStatus.NOT_FOUND, "S001", "제안을 찾을 수 없습니다."),
+
+    // Like (L)
+    LIKE_NOT_FOUND(HttpStatus.NOT_FOUND, "L001", "좋아요를 찾을 수 없습니다."),
+    ALREADY_LIKED(HttpStatus.CONFLICT, "L002", "이미 좋아요한 아이디어입니다."),
+
+    // Hidden (H)
+    HIDDEN_NOT_FOUND(HttpStatus.NOT_FOUND, "H001", "숨김을 찾을 수 없습니다."),
+    ALREADY_HIDDEN(HttpStatus.CONFLICT, "H002", "이미 숨긴 아이디어입니다.");
 
     private final HttpStatus status;
     private final String code;

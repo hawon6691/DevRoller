@@ -108,8 +108,10 @@ public class TitleService {
     @Transactional
     public void checkAndGrantLevelTitle(Long userId, int newLevel) {
         // 해당 레벨에서 획득 가능한 칭호 조회
-        titleRepository.findByTypeAndRequiredLevel(Title.TitleType.LEVEL, newLevel)
-                .ifPresent(title -> grantTitle(userId, title));
+        List<Title> titles = titleRepository.findByTypeAndRequiredLevel(Title.TitleType.LEVEL, newLevel);
+        if (!titles.isEmpty()) {
+            grantTitle(userId, titles.get(0));
+        }
     }
 
     /**

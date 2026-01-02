@@ -38,4 +38,7 @@ public interface UserIdeaRepository extends JpaRepository<UserIdea, Long> {
     // 특정 아이디어를 진행 중인 사용자 수
     @Query("SELECT COUNT(ui) FROM UserIdea ui WHERE ui.idea.id = :ideaId AND ui.status = 'IN_PROGRESS'")
     int countInProgressByIdeaId(@Param("ideaId") Long ideaId);
+
+    // 상태별 개수
+    long countByUserIdAndStatus(Long userId, UserIdea.Status status);
 }

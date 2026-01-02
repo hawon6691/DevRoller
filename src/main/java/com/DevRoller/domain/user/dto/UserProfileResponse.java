@@ -48,6 +48,28 @@ public class UserProfileResponse {
                 .build();
     }
 
+    public static UserProfileResponse from(User user, String titleName) {
+        int currentLevel = user.getLevel();
+        int requiredExp = currentLevel * 100;  // 다음 레벨 필요 경험치
+        int expToNext = requiredExp - user.getExperience();
+
+        return UserProfileResponse.builder()
+                .userId(user.getId())
+                .email(user.getEmail())
+                .nickname(user.getNickname())
+                .profileImage(user.getProfileImage())
+                .level(user.getLevel())
+                .experience(user.getExperience())
+                .experienceToNextLevel(Math.max(0, expToNext))
+                .totalCompleted(user.getTotalCompleted())
+                .currentStreak(user.getCurrentStreak())
+                .maxStreak(user.getMaxStreak())
+                .equippedTitleId(user.getEquippedTitleId())
+                .equippedTitleName(titleName)
+                .createdAt(user.getCreatedAt())
+                .build();
+    }
+
     // 칭호명 설정 (별도 조회 후)
     public UserProfileResponse withTitleName(String titleName) {
         return UserProfileResponse.builder()

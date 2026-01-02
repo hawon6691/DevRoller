@@ -90,7 +90,7 @@ class GamificationEventListenerTest {
         void handleProjectCompleted_AddExperience() {
             // given
             given(achievementRepository.findByType(any())).willReturn(Collections.emptyList());
-            given(userRepository.save(any(User.class))).willReturn(testUser);
+            given(userRepository.save(any(User.class))).willAnswer(invocation -> invocation.getArgument(0));
 
             ProjectCompletedEvent event = new ProjectCompletedEvent(this, testUser, testIdea);
             int initialExp = testUser.getExperience();
@@ -227,7 +227,7 @@ class GamificationEventListenerTest {
             // given
             given(titleRepository.findByRequiredAchievementCode(any()))
                     .willReturn(Optional.empty());
-            given(userRepository.save(any())).willReturn(testUser);
+            given(userRepository.save(any())).willAnswer(invocation -> invocation.getArgument(0));
 
             int initialExp = testUser.getExperience();
             AchievementUnlockedEvent event = new AchievementUnlockedEvent(this, testUser, testAchievement);

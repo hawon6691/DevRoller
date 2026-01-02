@@ -4,14 +4,11 @@ import com.devroller.domain.category.entity.Category;
 import lombok.Builder;
 import lombok.Getter;
 
-/**
- * 카테고리 응답 DTO
- */
 @Getter
 @Builder
 public class CategoryResponse {
 
-    private Long categoryId;
+    private Long id;
     private String name;
     private String description;
     private String icon;
@@ -20,7 +17,7 @@ public class CategoryResponse {
 
     public static CategoryResponse from(Category category) {
         return CategoryResponse.builder()
-                .categoryId(category.getId())
+                .id(category.getId())
                 .name(category.getName())
                 .description(category.getDescription())
                 .icon(category.getIcon())

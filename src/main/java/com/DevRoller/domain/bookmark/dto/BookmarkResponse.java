@@ -6,16 +6,14 @@ import lombok.Getter;
 
 import java.time.LocalDateTime;
 
-/**
- * 북마크 응답 DTO
- */
 @Getter
 @Builder
 public class BookmarkResponse {
 
-    private Long bookmarkId;
+    private Long id;
     private Long ideaId;
     private String ideaTitle;
+    private String ideaDescription;
     private String categoryName;
     private String difficulty;
     private String memo;
@@ -23,9 +21,10 @@ public class BookmarkResponse {
 
     public static BookmarkResponse from(Bookmark bookmark) {
         return BookmarkResponse.builder()
-                .bookmarkId(bookmark.getId())
+                .id(bookmark.getId())
                 .ideaId(bookmark.getIdea().getId())
                 .ideaTitle(bookmark.getIdea().getTitle())
+                .ideaDescription(bookmark.getIdea().getDescription())
                 .categoryName(bookmark.getIdea().getCategory().getName())
                 .difficulty(bookmark.getIdea().getDifficulty().name())
                 .memo(bookmark.getMemo())

@@ -55,25 +55,25 @@ public class TitleController {
         Long userId = Long.parseLong(jwt.getSubject());
         Optional<UserTitleResponse> response = titleService.getEquippedTitle(userId);
         return response.map(ApiResponse::success)
-                .orElse(ApiResponse.success("장착된 칭호가 없습니다.", null));
+                .orElse(ApiResponse.success(null));
     }
 
     @Operation(summary = "칭호 장착", description = "칭호를 장착합니다.")
     @PostMapping("/{titleId}/equip")
-    public ApiResponse<Void> equipTitle(
+    public ApiResponse<String> equipTitle(
             @AuthenticationPrincipal Jwt jwt,
             @PathVariable Long titleId) {
         Long userId = Long.parseLong(jwt.getSubject());
         titleService.equipTitle(userId, titleId);
-        return ApiResponse.success("칭호를 장착했습니다.", null);
+        return ApiResponse.success("칭호를 장착했습니다.");
     }
 
     @Operation(summary = "칭호 해제", description = "장착된 칭호를 해제합니다.")
     @PostMapping("/unequip")
-    public ApiResponse<Void> unequipTitle(@AuthenticationPrincipal Jwt jwt) {
+    public ApiResponse<String> unequipTitle(@AuthenticationPrincipal Jwt jwt) {
         Long userId = Long.parseLong(jwt.getSubject());
         titleService.unequipTitle(userId);
-        return ApiResponse.success("칭호를 해제했습니다.", null);
+        return ApiResponse.success("칭호를 해제했습니다.");
     }
 
     @Operation(summary = "최근 획득 칭호", description = "최근 획득한 칭호 목록을 조회합니다.")

@@ -2,7 +2,9 @@ package com.devroller.domain.pick.service;
 
 import com.devroller.domain.idea.dto.IdeaResponse;
 import com.devroller.domain.idea.entity.Idea;
+import com.devroller.domain.idea.entity.UserIdea;
 import com.devroller.domain.idea.repository.IdeaRepository;
+import com.devroller.domain.idea.repository.UserIdeaRepository;
 import com.devroller.domain.pick.dto.PickRequest;
 import com.devroller.domain.pick.dto.PickResponse;
 import com.devroller.domain.pick.entity.PickHistory;
@@ -21,6 +23,7 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.Collections;
 import java.util.List;
 import java.util.Random;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @Slf4j
@@ -32,6 +35,7 @@ public class PickService {
     private final PickHistoryRepository pickHistoryRepository;
     private final IdeaRepository ideaRepository;
     private final UserRepository userRepository;
+    private final UserIdeaRepository userIdeaRepository;
     private final Random random = new Random();
 
     /**
@@ -43,15 +47,15 @@ public class PickService {
                 .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
 
         // 후보 아이디어 조회
-        List<Idea> candidates = getCandidates(request);
-        
+        List<Idea> candidates = getCandidates(userId, request);
+
         if (candidates.isEmpty()) {
             throw new BusinessException(ErrorCode.NO_AVAILABLE_IDEAS);
         }
 
         // 추첨 실행
         Idea selectedIdea = executeDrawing(candidates, request.getMethod());
-        
+
         // Pick 카운트 증가
         selectedIdea.incrementPickCount();
 
@@ -63,7 +67,7 @@ public class PickService {
                 .categoryFilter(request.getCategoryId() != null ? request.getCategoryId().toString() : null)
                 .difficultyFilter(request.getDifficulty())
                 .build();
-        
+
         pickHistoryRepository.save(history);
 
         // 룰렛/사다리의 경우 후보 목록도 반환
@@ -79,11 +83,11 @@ public class PickService {
     }
 
     /**
-     * 후보 아이디어 조회
+     * 후보 아이디어 조회 (필터링 포함)
      */
-    private List<Idea> getCandidates(PickRequest request) {
+    private List<Idea> getCandidates(Long userId, PickRequest request) {
         List<Idea> ideas;
-        
+
         // 카테고리 + 난이도 필터
         if (request.getCategoryId() != null && request.getDifficulty() != null) {
             Idea.Difficulty difficulty = Idea.Difficulty.valueOf(request.getDifficulty());
@@ -105,15 +109,59 @@ public class PickService {
             ideas = ideaRepository.findByIsActiveTrue();
         }
 
+        // 태그 필터 적용
+        if (request.getTagIds() != null && !request.getTagIds().isEmpty()) {
+            ideas = filterByTags(ideas, request.getTagIds());
+        }
+
+        // 완료한 주제 제외
+        if (Boolean.TRUE.equals(request.getExcludeCompleted())) {
+            Set<Long> completedIdeaIds = userIdeaRepository
+                    .findByUserIdAndStatus(userId, UserIdea.Status.COMPLETED)
+                    .stream()
+                    .map(ui -> ui.getIdea().getId())
+                    .collect(Collectors.toSet());
+            ideas = ideas.stream()
+                    .filter(idea -> !completedIdeaIds.contains(idea.getId()))
+                    .collect(Collectors.toList());
+        }
+
+        // 진행 중인 주제 제외
+        if (Boolean.TRUE.equals(request.getExcludeInProgress())) {
+            Set<Long> inProgressIdeaIds = userIdeaRepository
+                    .findByUserIdAndStatus(userId, UserIdea.Status.IN_PROGRESS)
+                    .stream()
+                    .map(ui -> ui.getIdea().getId())
+                    .collect(Collectors.toSet());
+            ideas = ideas.stream()
+                    .filter(idea -> !inProgressIdeaIds.contains(idea.getId()))
+                    .collect(Collectors.toList());
+        }
+
         // 룰렛/사다리용 후보 수 제한
         if ((request.getMethod() == PickHistory.PickMethod.ROULETTE ||
-             request.getMethod() == PickHistory.PickMethod.LADDER) && 
+             request.getMethod() == PickHistory.PickMethod.LADDER) &&
             request.getCount() != null && ideas.size() > request.getCount()) {
             Collections.shuffle(ideas);
             ideas = ideas.subList(0, request.getCount());
         }
 
         return ideas;
+    }
+
+    /**
+     * 태그 필터링 (AND 조건)
+     */
+    private List<Idea> filterByTags(List<Idea> ideas, List<Long> tagIds) {
+        return ideas.stream()
+                .filter(idea -> {
+                    Set<Long> ideaTagIds = idea.getIdeaTags().stream()
+                            .map(it -> it.getTag().getId())
+                            .collect(Collectors.toSet());
+                    // 모든 태그를 포함하는지 확인 (AND 조건)
+                    return ideaTagIds.containsAll(tagIds);
+                })
+                .collect(Collectors.toList());
     }
 
     /**
@@ -212,7 +260,7 @@ public class PickService {
     public PickStatsResponse getPickStats(Long userId) {
         long totalPicks = pickHistoryRepository.countByUserId(userId);
         List<Object[]> methodStats = pickHistoryRepository.countByPickMethod(userId);
-        
+
         return PickStatsResponse.builder()
                 .totalPicks(totalPicks)
                 .methodStats(methodStats.stream()
@@ -221,6 +269,13 @@ public class PickService {
                                 arr -> ((Long) arr[1]).intValue()
                         )))
                 .build();
+    }
+
+    /**
+     * 사용자의 총 추첨 횟수 조회
+     */
+    public long getTotalPickCount(Long userId) {
+        return pickHistoryRepository.countByUserId(userId);
     }
 
     @lombok.Builder

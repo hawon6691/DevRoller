@@ -2,30 +2,23 @@ package com.devroller.domain.review.service;
 
 import com.devroller.domain.idea.entity.Idea;
 import com.devroller.domain.idea.entity.UserIdea;
+import com.devroller.domain.idea.repository.IdeaRepository;
 import com.devroller.domain.idea.repository.UserIdeaRepository;
-import com.devroller.domain.idea.service.IdeaService;
 import com.devroller.domain.review.dto.ReviewRequest;
 import com.devroller.domain.review.dto.ReviewResponse;
 import com.devroller.domain.review.entity.Review;
 import com.devroller.domain.review.repository.ReviewRepository;
 import com.devroller.domain.user.entity.User;
-import com.devroller.domain.user.service.UserService;
+import com.devroller.domain.user.repository.UserRepository;
 import com.devroller.global.exception.BusinessException;
 import com.devroller.global.exception.ErrorCode;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
-import java.util.stream.Collectors;
-
-/**
- * 리뷰 서비스
- */
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -33,46 +26,33 @@ import java.util.stream.Collectors;
 public class ReviewService {
 
     private final ReviewRepository reviewRepository;
+    private final UserRepository userRepository;
+    private final IdeaRepository ideaRepository;
     private final UserIdeaRepository userIdeaRepository;
-    private final UserService userService;
-    private final IdeaService ideaService;
-
-    /**
-     * 아이디어의 리뷰 목록
-     */
-    public Page<ReviewResponse> getReviewsByIdea(Long ideaId, Pageable pageable) {
-        return reviewRepository.findByIdeaId(ideaId, pageable)
-                .map(ReviewResponse::from);
-    }
-
-    /**
-     * 사용자의 리뷰 목록
-     */
-    public Page<ReviewResponse> getReviewsByUser(Long userId, Pageable pageable) {
-        return reviewRepository.findByUserId(userId, pageable)
-                .map(ReviewResponse::from);
-    }
 
     /**
      * 리뷰 작성
      */
     @Transactional
-    public ReviewResponse createReview(Long userId, ReviewRequest request) {
-        // 완료한 프로젝트인지 확인
-        UserIdea userIdea = userIdeaRepository.findByUserIdAndIdeaId(userId, request.getIdeaId())
-                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+    public ReviewResponse createReview(Long userId, Long ideaId, ReviewRequest request) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.USER_NOT_FOUND));
+        
+        Idea idea = ideaRepository.findById(ideaId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.IDEA_NOT_FOUND));
 
+        // 완료한 프로젝트인지 확인
+        UserIdea userIdea = userIdeaRepository.findByUserIdAndIdeaId(userId, ideaId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.PROJECT_NOT_FOUND));
+        
         if (userIdea.getStatus() != UserIdea.Status.COMPLETED) {
-            throw new BusinessException(ErrorCode.NOT_COMPLETED, "완료한 프로젝트만 리뷰할 수 있습니다.");
+            throw new BusinessException(ErrorCode.REVIEW_NOT_ALLOWED);
         }
 
-        // 이미 리뷰한 경우
-        if (reviewRepository.existsByUserIdAndIdeaId(userId, request.getIdeaId())) {
+        // 이미 리뷰를 작성했는지 확인
+        if (reviewRepository.existsByUserIdAndIdeaId(userId, ideaId)) {
             throw new BusinessException(ErrorCode.ALREADY_REVIEWED);
         }
-
-        User user = userService.findById(userId);
-        Idea idea = ideaService.findById(request.getIdeaId());
 
         Review review = Review.builder()
                 .user(user)
@@ -83,14 +63,12 @@ public class ReviewService {
                 .difficultyFeedback(request.getDifficultyFeedback())
                 .build();
 
-        Review saved = reviewRepository.save(review);
+        reviewRepository.save(review);
 
-        // 평균 평점 업데이트
-        updateAverageRating(request.getIdeaId());
+        // 아이디어 평균 평점 업데이트
+        updateIdeaRating(idea);
 
-        log.info("User {} reviewed idea {} (rating: {})", userId, request.getIdeaId(), request.getRating());
-
-        return ReviewResponse.from(saved);
+        return ReviewResponse.from(review);
     }
 
     /**
@@ -101,8 +79,9 @@ public class ReviewService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_NOT_FOUND));
 
+        // 작성자 확인
         if (!review.getUser().getId().equals(userId)) {
-            throw new BusinessException(ErrorCode.ACCESS_DENIED, "본인의 리뷰만 수정할 수 있습니다.");
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
 
         review.update(
@@ -112,8 +91,8 @@ public class ReviewService {
                 request.getDifficultyFeedback()
         );
 
-        // 평균 평점 업데이트
-        updateAverageRating(review.getIdea().getId());
+        // 아이디어 평균 평점 업데이트
+        updateIdeaRating(review.getIdea());
 
         return ReviewResponse.from(review);
     }
@@ -126,21 +105,20 @@ public class ReviewService {
         Review review = reviewRepository.findById(reviewId)
                 .orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_NOT_FOUND));
 
+        // 작성자 확인
         if (!review.getUser().getId().equals(userId)) {
-            throw new BusinessException(ErrorCode.ACCESS_DENIED, "본인의 리뷰만 삭제할 수 있습니다.");
+            throw new BusinessException(ErrorCode.ACCESS_DENIED);
         }
 
-        Long ideaId = review.getIdea().getId();
+        Idea idea = review.getIdea();
         reviewRepository.delete(review);
 
-        // 평균 평점 업데이트
-        updateAverageRating(ideaId);
-
-        log.info("User {} deleted review {}", userId, reviewId);
+        // 아이디어 평균 평점 업데이트
+        updateIdeaRating(idea);
     }
 
     /**
-     * 리뷰 도움됨 증가
+     * 리뷰 좋아요
      */
     @Transactional
     public void likeReview(Long reviewId) {
@@ -150,47 +128,45 @@ public class ReviewService {
     }
 
     /**
-     * 평균 평점 업데이트
+     * 리뷰 좋아요 취소
      */
-    private void updateAverageRating(Long ideaId) {
-        Double average = reviewRepository.calculateAverageRatingByIdeaId(ideaId);
-        if (average != null) {
-            ideaService.updateAverageRating(ideaId, Math.round(average * 10) / 10.0);
-        } else {
-            ideaService.updateAverageRating(ideaId, 0.0);
-        }
+    @Transactional
+    public void unlikeReview(Long reviewId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_NOT_FOUND));
+        review.decrementLikeCount();
     }
 
     /**
-     * 인기 리뷰 (좋아요 많은)
+     * 아이디어별 리뷰 목록 조회
      */
-    public List<ReviewResponse> getTopLikedReviews(Long ideaId, int limit) {
-        return reviewRepository.findTopLikedReviewsByIdeaId(ideaId, PageRequest.of(0, limit))
-                .stream()
-                .map(ReviewResponse::from)
-                .collect(Collectors.toList());
+    public Page<ReviewResponse> getReviewsByIdea(Long ideaId, Pageable pageable) {
+        return reviewRepository.findByIdeaIdOrderByCreatedAtDesc(ideaId, pageable)
+                .map(ReviewResponse::from);
     }
 
     /**
-     * 최근 리뷰 (전체)
+     * 내 리뷰 목록 조회
      */
-    public List<ReviewResponse> getRecentReviews(int limit) {
-        return reviewRepository.findRecentReviews(PageRequest.of(0, limit))
-                .stream()
-                .map(ReviewResponse::from)
-                .collect(Collectors.toList());
+    public Page<ReviewResponse> getMyReviews(Long userId, Pageable pageable) {
+        return reviewRepository.findByUserIdOrderByCreatedAtDesc(userId, pageable)
+                .map(ReviewResponse::from);
     }
 
     /**
-     * 리뷰 통계
+     * 리뷰 단건 조회
      */
-    public ReviewStats getReviewStats(Long ideaId) {
-        long count = reviewRepository.countByIdeaId(ideaId);
-        Double average = reviewRepository.calculateAverageRatingByIdeaId(ideaId);
-        Double avgHours = reviewRepository.calculateAverageActualHoursByIdeaId(ideaId);
-
-        return new ReviewStats(count, average != null ? average : 0.0, avgHours != null ? avgHours : 0.0);
+    public ReviewResponse getReview(Long reviewId) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new BusinessException(ErrorCode.REVIEW_NOT_FOUND));
+        return ReviewResponse.from(review);
     }
 
-    public record ReviewStats(long count, double averageRating, double averageHours) {}
+    /**
+     * 아이디어 평균 평점 업데이트
+     */
+    private void updateIdeaRating(Idea idea) {
+        Double avgRating = reviewRepository.getAverageRatingByIdeaId(idea.getId());
+        idea.updateAverageRating(avgRating != null ? avgRating : 0.0);
+    }
 }

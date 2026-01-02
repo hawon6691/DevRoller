@@ -41,7 +41,6 @@ public class GamificationEventListener {
     /**
      * 프로젝트 완료 이벤트 처리
      */
-    @Async
     @EventListener
     @Transactional
     public void handleProjectCompleted(ProjectCompletedEvent event) {
@@ -78,7 +77,6 @@ public class GamificationEventListener {
     /**
      * 레벨업 이벤트 처리
      */
-    @Async
     @EventListener
     @Transactional
     public void handleLevelUp(LevelUpEvent event) {
@@ -108,7 +106,6 @@ public class GamificationEventListener {
     /**
      * 업적 달성 이벤트 처리
      */
-    @Async
     @EventListener
     @Transactional
     public void handleAchievementUnlocked(AchievementUnlockedEvent event) {

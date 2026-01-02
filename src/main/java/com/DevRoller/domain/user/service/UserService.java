@@ -2,6 +2,7 @@ package com.devroller.domain.user.service;
 
 import com.devroller.domain.gamification.title.entity.Title;
 import com.devroller.domain.gamification.title.repository.TitleRepository;
+import com.devroller.domain.user.dto.UserProfileResponse;
 import com.devroller.domain.user.dto.UserResponse;
 import com.devroller.domain.user.dto.UserUpdateRequest;
 import com.devroller.domain.user.entity.User;
@@ -120,6 +121,31 @@ public class UserService {
     public void deactivateUser(Long userId) {
         User user = findUserById(userId);
         user.deactivate();
+    }
+
+    /**
+     * 사용자 엔티티 조회
+     */
+    public User findById(Long userId) {
+        return findUserById(userId);
+    }
+
+    /**
+     * 경험치 추가
+     */
+    @Transactional
+    public void addExperience(Long userId, Integer exp) {
+        User user = findUserById(userId);
+        user.addExperience(exp);
+    }
+
+    /**
+     * 사용자 프로필 조회
+     */
+    public UserProfileResponse getProfile(Long userId) {
+        User user = findUserById(userId);
+        String titleName = getTitleName(user.getEquippedTitleId());
+        return UserProfileResponse.from(user, titleName);
     }
 
     // ===== Private Methods =====

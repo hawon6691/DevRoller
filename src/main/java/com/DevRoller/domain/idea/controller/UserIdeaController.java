@@ -65,7 +65,7 @@ public class UserIdeaController {
             @PathVariable Long ideaId) {
         Long userId = Long.parseLong(jwt.getSubject());
         UserIdeaResponse response = userIdeaService.startProject(userId, ideaId);
-        return ApiResponse.success("프로젝트를 시작했습니다.", response);
+        return ApiResponse.success(response);
     }
 
     @Operation(summary = "프로젝트 완료", description = "진행중인 프로젝트를 완료 처리합니다.")
@@ -77,7 +77,7 @@ public class UserIdeaController {
         Long userId = Long.parseLong(jwt.getSubject());
         String githubUrl = request != null ? request.get("githubUrl") : null;
         UserIdeaResponse response = userIdeaService.completeProject(userId, ideaId, githubUrl);
-        return ApiResponse.success("프로젝트를 완료했습니다! 경험치를 획득했습니다.", response);
+        return ApiResponse.success(response);
     }
 
     @Operation(summary = "프로젝트 포기", description = "진행중인 프로젝트를 포기합니다.")
@@ -87,7 +87,7 @@ public class UserIdeaController {
             @PathVariable Long ideaId) {
         Long userId = Long.parseLong(jwt.getSubject());
         UserIdeaResponse response = userIdeaService.abandonProject(userId, ideaId);
-        return ApiResponse.success("프로젝트를 포기했습니다.", response);
+        return ApiResponse.success(response);
     }
 
     @Operation(summary = "진행률 업데이트", description = "프로젝트의 진행률을 업데이트합니다.")
@@ -98,7 +98,7 @@ public class UserIdeaController {
             @Valid @RequestBody UserIdeaUpdateRequest request) {
         Long userId = Long.parseLong(jwt.getSubject());
         UserIdeaResponse response = userIdeaService.updateProgress(userId, ideaId, request);
-        return ApiResponse.success("진행 상황이 업데이트되었습니다.", response);
+        return ApiResponse.success(response);
     }
 
     @Operation(summary = "프로젝트 통계", description = "내 프로젝트 통계를 조회합니다.")
