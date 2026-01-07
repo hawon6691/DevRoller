@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 
 @Tag(name = "Idea", description = "아이디어/주제 API")
 @RestController
-@RequestMapping("/api/v1/ideas")
+@RequestMapping({"/api/v1/ideas", "/api/ideas"})  // v1 경로와 v1 없는 경로 모두 지원
 @RequiredArgsConstructor
 public class IdeaController {
 
